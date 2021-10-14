@@ -1,6 +1,7 @@
 package cmd_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -165,8 +166,8 @@ var _ = Describe("Config", func() {
 				Expect(err).ToNot(HaveOccurred())
 				stdin.Close()
 
-				query := `query ValidateConfig ($config: String!, $pipelineValues: [StringKeyVal!]) {
-					buildConfig(configYaml: $config, pipelineValues: $pipelineValues) {
+				query := `query ValidateConfig ($config: String!, $pipelineParametersJson: String, $pipelineValuesJson: String) {
+					buildConfig(configYaml: $config, pipelineParametersJson: $pipelineParametersJson, pipelineValuesJson: $pipelineValuesJson) {
 						valid,
 						errors { message },
 						sourceYaml,
@@ -176,7 +177,10 @@ var _ = Describe("Config", func() {
 
 				r := graphql.NewRequest(query)
 				r.Variables["config"] = config
-				r.Variables["pipelineValues"] = pipeline.PrepareForGraphQL(pipeline.LocalPipelineVars(map[string]string{}))
+
+				pipelineValues, err := json.Marshal(pipeline.LocalPipelineVars())
+				Expect(err).ToNot(HaveOccurred())
+				r.Variables["pipelineValuesJson"] = string(pipelineValues)
 
 				req, err := r.Encode()
 				Expect(err).ShouldNot(HaveOccurred())
@@ -243,8 +247,8 @@ var _ = Describe("Config", func() {
 				Expect(err).ToNot(HaveOccurred())
 				stdin.Close()
 
-				query := `query ValidateConfig ($config: String!, $pipelineValues: [StringKeyVal!], $orgSlug: String) {
-					buildConfig(configYaml: $config, pipelineValues: $pipelineValues, orgSlug: $orgSlug) {
+				query := `query ValidateConfig ($config: String!, $pipelineParametersJson: String, $pipelineValuesJson: String, $orgSlug: String) {
+					buildConfig(configYaml: $config, pipelineParametersJson: $pipelineParametersJson, pipelineValuesJson: $pipelineValuesJson, orgSlug: $orgSlug) {
 						valid,
 						errors { message },
 						sourceYaml,
@@ -254,8 +258,11 @@ var _ = Describe("Config", func() {
 
 				r := graphql.NewRequest(query)
 				r.Variables["config"] = config
-				r.Variables["pipelineValues"] = pipeline.PrepareForGraphQL(pipeline.LocalPipelineVars(map[string]string{}))
 				r.Variables["orgSlug"] = orgSlug
+
+				pipelineValues, err := json.Marshal(pipeline.LocalPipelineVars())
+				Expect(err).ToNot(HaveOccurred())
+				r.Variables["pipelineValuesJson"] = string(pipelineValues)
 
 				req, err := r.Encode()
 				Expect(err).ShouldNot(HaveOccurred())
